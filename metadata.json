@@ -1,0 +1,6 @@
+{
+  "name": "دفترچه تمرین",
+  "description": "برنامه مدیریت و ثبت تمرینات ورزشی و بدنسازی به صورت کاملا محلی با تاریخ جلالی",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

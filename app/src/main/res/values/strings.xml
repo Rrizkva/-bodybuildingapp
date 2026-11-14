@@ -1,0 +1,91 @@
+<resources>
+    <string name="app_name">دفترچه تمرین</string>
+    <string name="app_tagline">مدیریت و ثبت حرفه‌ای تمرینات بدنسازی</string>
+
+    <!-- Navigation & Common -->
+    <string name="back">بازگشت</string>
+    <string name="previous_exercise">برگشت</string>
+    <string name="next">بعدی</string>
+    <string name="finish">پایان</string>
+    <string name="save">ذخیره</string>
+    <string name="save_and_finish">ذخیره و پایان</string>
+    <string name="cancel">انصراف</string>
+    <string name="delete">حذف</string>
+    <string name="confirm_delete">آیا از حذف این مورد اطمینان دارید؟</string>
+    <string name="confirm_delete_day">آیا می‌خواهید این روز تمرینی و تمام حرکات آن را حذف کنید؟</string>
+    <string name="yes">بله، حذف کن</string>
+    <string name="no">خیر</string>
+    <string name="empty_title">موردی یافت نشد</string>
+
+    <!-- Screen 1: Plan Editor -->
+    <string name="plan_editor_title">طراحی برنامه تمرینی</string>
+    <string name="plan_editor_subtitle">روزهای تمرینی و حرکات هر روز را مشخص کنید</string>
+    <string name="add_day">افزودن روز جدید</string>
+    <string name="delete_day">حذف روز</string>
+    <string name="add_exercise">افزودن حرکت جدید</string>
+    <string name="delete_exercise">حذف حرکت</string>
+    <string name="exercise_name_label">نام حرکت</string>
+    <string name="exercise_name_hint">مثال: پرس سینه دمبل</string>
+    <string name="planned_sets_label">تعداد ست</string>
+    <string name="planned_reps_label">تعداد حرکت در هر ست</string>
+    <string name="finish_planning">پایان برنامه‌ریزی</string>
+    <string name="plan_saved_success">برنامه تمرینی با موفقیت ذخیره شد</string>
+    <string name="validation_empty_name">لطفاً نام تمام حرکات را وارد کنید</string>
+    <string name="validation_positive_number">تعداد ست و تکرار باید عدد مثبت باشند</string>
+
+    <!-- Screen 2: Main Menu -->
+    <string name="main_menu_title">دفترچه تمرین</string>
+    <string name="start_new_day">شروع روز جدید</string>
+    <string name="exercise_analysis">آنالیز حرکات</string>
+    <string name="edit_plan">ویرایش برنامه تمرینی</string>
+    <string name="no_plan_title">هنوز برنامه‌ای تعریف نشده است</string>
+    <string name="no_plan_desc">برای شروع تمرینات و ثبت رکوردهای خود، ابتدا یک برنامه تمرینی جدید بسازید.</string>
+    <string name="create_plan_now">ایجاد اولین برنامه تمرینی</string>
+
+    <!-- Screen 3: Start New Day -->
+    <string name="select_day_title">انتخاب روز تمرین</string>
+    <string name="select_day_subtitle">کدام روز تمرینی را می‌خواهید امروز اجرا کنید؟</string>
+    <string name="no_days_available">روزی برای تمرین یافت نشد</string>
+
+    <!-- Screen 4: Workout Session -->
+    <string name="workout_session_title">جلسه تمرینی</string>
+    <string name="set_label_format">ست %1$s</string>
+    <string name="weight_kg">وزنه (کیلوگرم)</string>
+    <string name="reps">تکرار</string>
+    <string name="completed">انجام شد</string>
+    <string name="plan_summary_format">%1$s ست × %2$s تکرار</string>
+    <string name="exercise_progress_format">حرکت %1$s از %2$s</string>
+
+    <!-- Screen 5: Session Review -->
+    <string name="session_review_title">ثبت بازخورد تمرین</string>
+    <string name="pressure_rating_label">فشار تمرین (۱ تا ۱۰)</string>
+    <string name="pressure_rating_desc">میزان فشار قلبی و تنفسی یا خستگی بدنی</string>
+    <string name="difficulty_rating_label">سختی تمرین (۱ تا ۱۰)</string>
+    <string name="difficulty_rating_desc">میزان سنگینی وزنه‌ها و چالش تکنیکی</string>
+    <string name="session_note_label">یادداشت</string>
+    <string name="session_note_hint">نکاتی درباره انرژی امروز، درد یا پیشرفت وزنه‌ها...</string>
+    <string name="workout_completed_message">خسته نباشی! تمرین تموم شد</string>
+
+    <!-- Screen 6: Exercise Analysis -->
+    <string name="analysis_title">آنالیز و آمار حرکات</string>
+    <string name="no_history_title">هنوز سابقه‌ای ثبت نشده است</string>
+    <string name="no_history_desc">پس از تکمیل جلسات تمرینی، آمار و نمودارهای پیشرفت هر حرکت در این بخش نمایش داده می‌شوند.</string>
+    <string name="metric_max_weight">بیشترین وزنه</string>
+    <string name="metric_total_volume">حجم کل</string>
+    <string name="sessions_count_format">%1$s جلسه ثبت شده</string>
+    <string name="last_logged_format">آخرین تمرین: %1$s</string>
+    <string name="unit_kg">کیلوگرم</string>
+    <string name="unit_kg_reps">کیلوگرم × تکرار</string>
+    <string name="session_history_title">تاریخچه جلسات</string>
+    <string name="no_sets_completed">ستی به عنوان انجام شده ثبت نشده است</string>
+    <string name="details">جزئیات</string>
+
+    <!-- Screen 6: 3-Level Exercise Analysis Flow -->
+    <string name="not_completed">انجام نشد</string>
+    <string name="session_summary_button">خلاصه‌ی جلسه</string>
+    <string name="session_summary_title">خلاصه جلسه</string>
+    <string name="no_note_recorded">یادداشتی ثبت نشده</string>
+    <string name="session_exercises_title">حرکات جلسه</string>
+    <string name="no_sessions_yet_title">هنوز جلسه‌ای ثبت نشده است</string>
+    <string name="no_sessions_yet_desc">پس از شروع و اجرای روزهای تمرینی، جلسات شما در این بخش برای بررسی و آنالیز ذخیره می‌شوند.</string>
+</resources>

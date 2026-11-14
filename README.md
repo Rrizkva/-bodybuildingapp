@@ -1,11 +1,10 @@
-<div align="center">
+# دفترچه تمرین (Workout Tracker)
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+اپلیکیشن کاملاً آفلاین ثبت و آنالیز تمرینات بدنسازی (Jetpack Compose + Material 3 + Room SQLite).
 
-  <h1>Built with AI Studio</h2>
+## حفظ داده‌ها هنگام به‌روزرسانی (Important Update Note)
 
-  <p>The fastest path from prompt to production with Gemini.</p>
-
-  <a href="https://aistudio.google.com/apps">Start building</a>
-
-</div>
+- **هرگز قبل از نصب نسخه جدید، برنامه را حذف (Uninstall) نکنید.** حذف برنامه در اندروید تمام فایل‌های دیتابیس محلی SQLite را پاک می‌کند.
+- برای به‌روزرسانی، فایل APK نسخه جدید را مستقیماً روی نسخه فعلی نصب (Update) کنید (`applicationId` ثابت است: `com.aistudio.workouttracker.farsit`).
+- این پروژه از مهاجرت صریح پایگاه داده Room (`exportSchema = true` و کلاس‌های صریح `Migration`) بدون `fallbackToDestructiveMigration()` استفاده می‌کند تا تمام برنامه‌ها، جلسات، رکوردها و کامنت‌های شما هنگام ارتقای نسخه حفظ شوند.
+- همچنین می‌توانید از دکمه‌های **خروجی گرفتن** و **ورود اطلاعات** در منوی اصلی برای تهیه فایل پشتیبان JSON استفاده کنید.
