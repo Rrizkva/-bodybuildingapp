@@ -47,7 +47,7 @@ data class SessionExercisesUiState(
     val dayName: String = "",
     val jalaliDate: JalaliDate = JalaliDateUtil.fromEpochMillis(System.currentTimeMillis()),
     val exercises: List<SessionExerciseDetail> = emptyList(),
-    val expandedExerciseIds: Set<Long> = emptySet(),
+    val expandedExerciseId: Long? = null,
     val isLoading: Boolean = true
 )
 
@@ -206,7 +206,7 @@ class AnalysisViewModel(
                     dayName = dayName,
                     jalaliDate = jalaliDate,
                     exercises = exerciseDetails,
-                    expandedExerciseIds = emptySet(),
+                    expandedExerciseId = null,
                     isLoading = false
                 )
             }
@@ -215,16 +215,12 @@ class AnalysisViewModel(
 
     fun toggleExerciseExpanded(exerciseId: Long) {
         _sessionExercisesState.update { state ->
-            val newExpanded = if (exerciseId in state.expandedExerciseIds) {
-                state.expandedExerciseIds - exerciseId
-            } else {
-                state.expandedExerciseIds + exerciseId
-            }
+            val newExpandedId = if (state.expandedExerciseId == exerciseId) null else exerciseId
             val updatedList = state.exercises.map { ex ->
-                ex.copy(isExpanded = ex.exerciseId in newExpanded)
+                ex.copy(isExpanded = ex.exerciseId == newExpandedId)
             }
             state.copy(
-                expandedExerciseIds = newExpanded,
+                expandedExerciseId = newExpandedId,
                 exercises = updatedList
             )
         }

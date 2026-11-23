@@ -5,9 +5,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,7 +24,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.RateReview
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -58,8 +54,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.R
+import com.example.ui.components.RatingSliderCard
 import com.example.ui.viewmodel.WorkoutViewModel
-import com.example.util.JalaliDateUtil
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -161,20 +157,22 @@ fun SessionReviewScreen(
                     .padding(horizontal = 20.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                // Pressure Rating Selector (1 to 10)
-                RatingSelectorCard(
-                    title = stringResource(R.string.pressure_rating_label),
+                // Pressure Rating Material 3 Slider (1 to 10)
+                RatingSliderCard(
+                    title = "فشار تمرین",
                     subtitle = stringResource(R.string.pressure_rating_desc),
                     selectedRating = reviewState.pressureRating,
+                    accentColor = MaterialTheme.colorScheme.primary,
                     onRatingSelected = { viewModel.updatePressureRating(it) },
                     testTagPrefix = "pressure_rating"
                 )
 
-                // Difficulty Rating Selector (1 to 10)
-                RatingSelectorCard(
-                    title = stringResource(R.string.difficulty_rating_label),
+                // Difficulty Rating Material 3 Slider (1 to 10)
+                RatingSliderCard(
+                    title = "سختی تمرین",
                     subtitle = stringResource(R.string.difficulty_rating_desc),
                     selectedRating = reviewState.difficultyRating,
+                    accentColor = MaterialTheme.colorScheme.secondary,
                     onRatingSelected = { viewModel.updateDifficultyRating(it) },
                     testTagPrefix = "difficulty_rating"
                 )
@@ -286,104 +284,6 @@ fun SessionReviewScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun RatingSelectorCard(
-    title: String,
-    subtitle: String,
-    selectedRating: Int,
-    onRatingSelected: (Int) -> Unit,
-    testTagPrefix: String
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(18.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary
-                ) {
-                    Text(
-                        text = "${JalaliDateUtil.toPersianDigits(selectedRating)} از ۱۰",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Rating chips from 1 to 10
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                for (rating in 1..10) {
-                    val isSelected = rating == selectedRating
-                    val chipBg = if (isSelected) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.surfaceVariant
-                    val chipTextColor = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                    else MaterialTheme.colorScheme.onSurfaceVariant
-
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(chipBg)
-                            .border(
-                                BorderStroke(
-                                    if (isSelected) 2.dp else 1.dp,
-                                    if (isSelected) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                                ),
-                                CircleShape
-                            )
-                            .clickable { onRatingSelected(rating) }
-                            .testTag("${testTagPrefix}_$rating"),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = JalaliDateUtil.toPersianDigits(rating),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            color = chipTextColor
                         )
                     }
                 }

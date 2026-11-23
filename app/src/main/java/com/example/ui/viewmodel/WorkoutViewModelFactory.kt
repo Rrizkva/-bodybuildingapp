@@ -2,10 +2,12 @@ package com.example.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.example.data.preferences.VersionPreferences
 import com.example.data.repository.WorkoutRepository
 
 class WorkoutViewModelFactory(
-    private val repository: WorkoutRepository
+    private val repository: WorkoutRepository,
+    private val versionPreferences: VersionPreferences? = null
 ) : ViewModelProvider.Factory {
 
     @Suppress("UNCHECKED_CAST")
@@ -15,7 +17,7 @@ class WorkoutViewModelFactory(
                 PlanEditorViewModel(repository) as T
             }
             modelClass.isAssignableFrom(WorkoutViewModel::class.java) -> {
-                WorkoutViewModel(repository) as T
+                WorkoutViewModel(repository, versionPreferences) as T
             }
             modelClass.isAssignableFrom(AnalysisViewModel::class.java) -> {
                 AnalysisViewModel(repository) as T

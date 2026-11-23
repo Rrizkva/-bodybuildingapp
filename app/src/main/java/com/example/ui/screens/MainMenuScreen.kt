@@ -61,6 +61,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.R
 import com.example.data.model.Session
+import com.example.ui.components.WhatsNewDialog
 import com.example.ui.viewmodel.WorkoutViewModel
 import com.example.util.JalaliDateUtil
 
@@ -76,11 +77,12 @@ fun MainMenuScreen(
 ) {
     val daysWithExercises by viewModel.allDaysWithExercises.collectAsStateWithLifecycle()
     val unfinishedSessionPrompt by viewModel.unfinishedSessionPrompt.collectAsStateWithLifecycle()
+    val showWhatsNewDialog by viewModel.showWhatsNewDialog.collectAsStateWithLifecycle()
     val hasPlan = daysWithExercises.isNotEmpty()
     val todayJalali = remember { JalaliDateUtil.fromEpochMillis(System.currentTimeMillis()) }
 
     LaunchedEffect(Unit) {
-        viewModel.checkLaunchUnfinishedSessionIfNeeded()
+        viewModel.checkLaunchStatusIfNeeded()
     }
 
     LaunchedEffect(Unit) {
@@ -99,12 +101,18 @@ fun MainMenuScreen(
         }
     }
 
-    unfinishedSessionPrompt?.let { session ->
-        UnfinishedSessionDialog(
-            session = session,
-            onContinueSession = { viewModel.resumeUnfinishedSession() },
-            onStartFresh = { viewModel.startFreshFromPrompt() }
+    if (showWhatsNewDialog) {
+        WhatsNewDialog(
+            onDismiss = { viewModel.dismissWhatsNewDialog() }
         )
+    } else {
+        unfinishedSessionPrompt?.let { session ->
+            UnfinishedSessionDialog(
+                session = session,
+                onContinueSession = { viewModel.resumeUnfinishedSession() },
+                onStartFresh = { viewModel.startFreshFromPrompt() }
+            )
+        }
     }
 
     Scaffold(

@@ -21,14 +21,12 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Notes
-import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -41,7 +39,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
@@ -49,14 +46,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.R
+import com.example.ui.components.RatingSliderCard
 import com.example.ui.viewmodel.AnalysisViewModel
-import com.example.util.JalaliDateUtil
 
 /**
  * Screen 6 (Level 3): Session summary
  * - Displays:
- *   - Pressure rating (1 to 10) with a visual bar
- *   - Difficulty rating (1 to 10) with a visual bar
+ *   - Pressure rating (1 to 10) read-only Material 3 slider
+ *   - Difficulty rating (1 to 10) read-only Material 3 slider
  *   - The session note (if any) as read-only text, or "یادداشتی ثبت نشده"
  * - Date and day name at top, same as Level 1
  */
@@ -174,22 +171,24 @@ fun SessionSummaryScreen(
                     }
                 }
 
-                // Pressure Rating Visual Bar
-                RatingVisualBarCard(
-                    title = stringResource(R.string.pressure_rating_label),
+                // Pressure Rating Read-Only Slider
+                RatingSliderCard(
+                    title = "فشار تمرین",
                     subtitle = stringResource(R.string.pressure_rating_desc),
-                    rating = state.pressureRating,
-                    barColor = MaterialTheme.colorScheme.primary,
-                    testTag = "summary_pressure_rating"
+                    selectedRating = state.pressureRating,
+                    accentColor = MaterialTheme.colorScheme.primary,
+                    testTagPrefix = "summary_pressure_rating",
+                    onRatingSelected = null
                 )
 
-                // Difficulty Rating Visual Bar
-                RatingVisualBarCard(
-                    title = stringResource(R.string.difficulty_rating_label),
+                // Difficulty Rating Read-Only Slider
+                RatingSliderCard(
+                    title = "سختی تمرین",
                     subtitle = stringResource(R.string.difficulty_rating_desc),
-                    rating = state.difficultyRating,
-                    barColor = MaterialTheme.colorScheme.secondary,
-                    testTag = "summary_difficulty_rating"
+                    selectedRating = state.difficultyRating,
+                    accentColor = MaterialTheme.colorScheme.secondary,
+                    testTagPrefix = "summary_difficulty_rating",
+                    onRatingSelected = null
                 )
 
                 // Session Note Card (Read-only)
@@ -240,105 +239,6 @@ fun SessionSummaryScreen(
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-fun RatingVisualBarCard(
-    title: String,
-    subtitle: String,
-    rating: Int,
-    barColor: Color,
-    testTag: String
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag(testTag),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(18.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Speed,
-                        contentDescription = null,
-                        tint = barColor,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Surface(
-                    shape = CircleShape,
-                    color = barColor
-                ) {
-                    Text(
-                        text = "${JalaliDateUtil.toPersianDigits(rating)} از ۱۰",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Visual Progress Bar
-            val progress = (rating.coerceIn(1, 10)) / 10f
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(12.dp)
-                    .clip(RoundedCornerShape(6.dp)),
-                color = barColor,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            // Step tick labels from 1 to 10
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "۱ (سبک)",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = "۱۰ (حداکثر)",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
     }

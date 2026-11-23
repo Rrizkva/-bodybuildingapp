@@ -4,12 +4,16 @@ import android.content.ContentResolver
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.BuildConfig
 import com.example.data.backup.ValidatedBackupData
 import com.example.data.backup.WorkoutBackupManager
 import com.example.data.model.DayWithExercises
 import com.example.data.model.Exercise
 import com.example.data.model.Session
 import com.example.data.model.SetLog
+import com.example.data.preferences.VersionComparator
+import com.example.data.preferences.VersionPreferences
+import com.example.data.repository.PreviousExerciseReference
 import com.example.data.repository.WorkoutRepository
 import com.example.util.JalaliDate
 import com.example.util.JalaliDateUtil
@@ -44,6 +48,7 @@ data class WorkoutSessionUiState(
     val currentExerciseIndex: Int = 0,
     val currentExercise: Exercise? = null,
     val setRows: List<EditableSetRow> = emptyList(),
+    val previousReference: PreviousExerciseReference? = null,
     val currentExerciseComment: String = "",
     val isLastExercise: Boolean = false,
     val isLoading: Boolean = true
@@ -66,7 +71,8 @@ data class BackupUiState(
 )
 
 class WorkoutViewModel(
-    private val repository: WorkoutRepository
+    private val repository: WorkoutRepository,
+    private val versionPreferences: VersionPreferences? = null
 ) : ViewModel() {
 
     val allDaysWithExercises: StateFlow<List<DayWithExercises>> =
@@ -91,18 +97,47 @@ class WorkoutViewModel(
     private val _unfinishedSessionPrompt = MutableStateFlow<Session?>(null)
     val unfinishedSessionPrompt: StateFlow<Session?> = _unfinishedSessionPrompt.asStateFlow()
 
+    private val _showWhatsNewDialog = MutableStateFlow(false)
+    val showWhatsNewDialog: StateFlow<Boolean> = _showWhatsNewDialog.asStateFlow()
+
     private val _navigationEvents = MutableSharedFlow<String>()
     val navigationEvents: SharedFlow<String> = _navigationEvents.asSharedFlow()
 
     private var commentDebounceJob: Job? = null
-    private var launchResumeChecked = false
+    private var launchStatusChecked = false
 
-    fun checkLaunchUnfinishedSessionIfNeeded() {
-        if (launchResumeChecked) return
-        launchResumeChecked = true
+    fun checkLaunchStatusIfNeeded(currentVersionName: String = BuildConfig.VERSION_NAME) {
+        if (launchStatusChecked) return
+        launchStatusChecked = true
         viewModelScope.launch {
+            if (versionPreferences != null) {
+                val storedVersion = versionPreferences.getLastSeenVersion()
+                if (storedVersion == null) {
+                    val hasExistingData = repository.hasAnyExistingData()
+                    if (hasExistingData) {
+                        _showWhatsNewDialog.value = true
+                    } else {
+                        // Fresh install: do not show What's New dialog; store current version as seen
+                        versionPreferences.setLastSeenVersion(currentVersionName)
+                    }
+                } else if (VersionComparator.isVersionNewer(currentVersionName, storedVersion)) {
+                    _showWhatsNewDialog.value = true
+                }
+            }
+
             val resumable = repository.getLatestResumableSessionDirect()
             _unfinishedSessionPrompt.value = resumable
+        }
+    }
+
+    fun checkLaunchUnfinishedSessionIfNeeded() {
+        checkLaunchStatusIfNeeded()
+    }
+
+    fun dismissWhatsNewDialog(currentVersionName: String = BuildConfig.VERSION_NAME) {
+        _showWhatsNewDialog.value = false
+        viewModelScope.launch {
+            versionPreferences?.setLastSeenVersion(currentVersionName)
         }
     }
 
@@ -155,6 +190,7 @@ class WorkoutViewModel(
                     exercises = exercises,
                     currentExerciseIndex = startIndex,
                     currentExercise = startExercise,
+                    previousReference = null,
                     currentExerciseComment = "",
                     isLastExercise = exercises.isEmpty() || startIndex == exercises.lastIndex,
                     isLoading = false
@@ -162,15 +198,25 @@ class WorkoutViewModel(
             }
 
             if (startExercise != null) {
-                loadSetsAndCommentForExercise(sessionId, startExercise)
+                loadSetsAndCommentForExercise(sessionId, session.startedAt, startExercise)
             }
         }
     }
 
-    private suspend fun loadSetsAndCommentForExercise(sessionId: Long, exercise: Exercise) {
+    private suspend fun loadSetsAndCommentForExercise(
+        sessionId: Long,
+        sessionStartedAt: Long,
+        exercise: Exercise
+    ) {
         val existingLogs = repository.getSetLogsForSessionAndExerciseDirect(sessionId, exercise.id)
             .associateBy { it.setNumber }
         val existingComment = repository.getExerciseCommentDirect(sessionId, exercise.id)
+        val previousReference = repository.getPreviousExerciseReference(
+            currentSessionId = sessionId,
+            currentStartedAt = sessionStartedAt,
+            exerciseName = exercise.name,
+            plannedSets = exercise.plannedSets
+        )
 
         val rows = (1..exercise.plannedSets).map { setNumber ->
             val existing = existingLogs[setNumber]
@@ -197,6 +243,7 @@ class WorkoutViewModel(
         _sessionState.update {
             it.copy(
                 setRows = rows,
+                previousReference = previousReference,
                 currentExerciseComment = existingComment?.comment ?: ""
             )
         }
@@ -292,17 +339,19 @@ class WorkoutViewModel(
 
         if (nextIndex < state.exercises.size) {
             val nextExercise = state.exercises[nextIndex]
+            val sessionStartedAt = state.session?.startedAt ?: System.currentTimeMillis()
             _sessionState.update {
                 it.copy(
                     currentExerciseIndex = nextIndex,
                     currentExercise = nextExercise,
+                    previousReference = null,
                     currentExerciseComment = "",
                     isLastExercise = (nextIndex == state.exercises.lastIndex)
                 )
             }
             viewModelScope.launch {
                 repository.updateSessionExerciseIndex(state.sessionId, nextIndex)
-                loadSetsAndCommentForExercise(state.sessionId, nextExercise)
+                loadSetsAndCommentForExercise(state.sessionId, sessionStartedAt, nextExercise)
             }
         } else {
             // Last exercise reached, navigate to Screen 5 (Session Review)
@@ -318,17 +367,19 @@ class WorkoutViewModel(
         val prevIndex = state.currentExerciseIndex - 1
         if (prevIndex >= 0) {
             val prevExercise = state.exercises[prevIndex]
+            val sessionStartedAt = state.session?.startedAt ?: System.currentTimeMillis()
             _sessionState.update {
                 it.copy(
                     currentExerciseIndex = prevIndex,
                     currentExercise = prevExercise,
+                    previousReference = null,
                     currentExerciseComment = "",
                     isLastExercise = (prevIndex == state.exercises.lastIndex)
                 )
             }
             viewModelScope.launch {
                 repository.updateSessionExerciseIndex(state.sessionId, prevIndex)
-                loadSetsAndCommentForExercise(state.sessionId, prevExercise)
+                loadSetsAndCommentForExercise(state.sessionId, sessionStartedAt, prevExercise)
             }
         }
     }

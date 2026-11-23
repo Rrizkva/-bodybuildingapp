@@ -234,6 +234,42 @@ class FakeWorkoutDao : WorkoutDao {
         return setLogs.filter { it.sessionId == sessionId }.sortedBy { it.setNumber }
     }
 
+    override suspend fun getPreviousSessionForExerciseDirect(
+        currentSessionId: Long,
+        currentStartedAt: Long,
+        exerciseName: String
+    ): Session? {
+        val targetName = exerciseName.trim()
+        val matchingSessionIds = setLogs.mapNotNull { sl ->
+            val resolvedName = sl.exerciseName.ifBlank {
+                exercises.find { it.id == sl.exerciseId }?.name.orEmpty()
+            }.trim()
+            if (resolvedName == targetName) sl.sessionId else null
+        }.toSet()
+
+        return sessions
+            .filter { s ->
+                s.id != currentSessionId &&
+                    s.id in matchingSessionIds &&
+                    (s.startedAt < currentStartedAt || (s.startedAt == currentStartedAt && s.id < currentSessionId))
+            }
+            .sortedWith(compareByDescending<Session> { it.startedAt }.thenByDescending { it.id })
+            .firstOrNull()
+    }
+
+    override suspend fun getSetLogsForSessionAndExerciseNameDirect(
+        sessionId: Long,
+        exerciseName: String
+    ): List<SetLog> {
+        val targetName = exerciseName.trim()
+        return setLogs.filter { sl ->
+            val resolvedName = sl.exerciseName.ifBlank {
+                exercises.find { it.id == sl.exerciseId }?.name.orEmpty()
+            }.trim()
+            sl.sessionId == sessionId && resolvedName == targetName
+        }.sortedBy { it.setNumber }
+    }
+
     private var nextCommentId = 1L
     override suspend fun insertOrUpdateExerciseComment(comment: ExerciseComment): Long {
         val existing = exerciseComments.find { it.sessionId == comment.sessionId && it.exerciseId == comment.exerciseId }

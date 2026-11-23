@@ -1,10 +1,22 @@
 package com.example.data.repository
 
 import com.example.data.model.SetLog
+import com.example.data.preferences.VersionComparator
+import com.example.data.preferences.VersionPreferences
+import com.example.ui.viewmodel.AnalysisViewModel
+import com.example.ui.viewmodel.WorkoutViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -411,5 +423,221 @@ class WorkoutRepositoryTest {
         )
 
         assertEquals(null, repository.getLatestResumableSessionDirect())
+    }
+
+    @Test
+    fun previousExerciseReference_matchesByNameSelectsMostRecentBeforeCurrentAndHandlesMissingSets() = runTest {
+        val plan = listOf(
+            DayWithExercisesData(
+                name = "روز اول",
+                exercises = listOf(
+                    ExerciseData(name = "پرس سینه هالتر", plannedSets = 3, plannedRepsPerSet = 10)
+                )
+            )
+        )
+        repository.saveFullPlan(plan)
+        val day = repository.allDaysWithExercises.first().first()
+        val exId = day.exercises.first().id
+
+        // Older session (s1): set 1 completed 60kg x 10, set 2 unticked, set 3 not logged
+        val s1 = repository.startNewSession(day.day.id)
+        val s1Entity = repository.getSessionByIdDirect(s1)!!.copy(startedAt = 1_700_000_000_000L)
+        fakeDao.updateSession(s1Entity)
+        repository.saveSetLog(
+            SetLog(sessionId = s1, exerciseId = exId, exerciseName = "پرس سینه هالتر", setNumber = 1, weight = 60.0, reps = 10, completed = true)
+        )
+        repository.saveSetLog(
+            SetLog(sessionId = s1, exerciseId = exId, exerciseName = "پرس سینه هالتر", setNumber = 2, weight = 65.0, reps = 8, completed = false)
+        )
+
+        // Even after re-saving the plan (new exerciseId!), name-based lookup still finds s1 for s2!
+        repository.saveFullPlan(plan)
+        val newDay = repository.allDaysWithExercises.first().first()
+        val s2 = repository.startNewSession(newDay.day.id)
+        val s2Entity = repository.getSessionByIdDirect(s2)!!.copy(startedAt = 1_700_600_000_000L)
+        fakeDao.updateSession(s2Entity)
+
+        val refForS2 = repository.getPreviousExerciseReference(
+            currentSessionId = s2,
+            currentStartedAt = s2Entity.startedAt,
+            exerciseName = "پرس سینه هالتر",
+            plannedSets = 3
+        )
+        assertNotNull(refForS2)
+        assertEquals(s1, refForS2?.sessionId)
+        assertEquals(3, refForS2?.sets?.size)
+        assertTrue(refForS2!!.sets[0].isCompleted)
+        assertEquals(60.0, refForS2.sets[0].weight ?: 0.0, 0.001)
+        assertEquals(10, refForS2.sets[0].reps)
+        // Set 2 was unticked -> not completed
+        assertFalse(refForS2.sets[1].isCompleted)
+        // Set 3 was missing -> not completed
+        assertFalse(refForS2.sets[2].isCompleted)
+
+        // When no previous record exists (e.g., for s1 itself or another exercise), returns null
+        assertNull(
+            repository.getPreviousExerciseReference(
+                currentSessionId = s1,
+                currentStartedAt = s1Entity.startedAt,
+                exerciseName = "پرس سینه هالتر",
+                plannedSets = 3
+            )
+        )
+        assertNull(
+            repository.getPreviousExerciseReference(
+                currentSessionId = s2,
+                currentStartedAt = s2Entity.startedAt,
+                exerciseName = "اسکات پا",
+                plannedSets = 3
+            )
+        )
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun analysisViewModel_allowsOnlyOneExpandedExerciseAtATime() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        try {
+            val plan = listOf(
+                DayWithExercisesData(
+                    name = "روز اول",
+                    exercises = listOf(
+                        ExerciseData(name = "پرس سینه", plannedSets = 3, plannedRepsPerSet = 10),
+                        ExerciseData(name = "قفسه سینه", plannedSets = 3, plannedRepsPerSet = 12),
+                        ExerciseData(name = "پشت بازو", plannedSets = 3, plannedRepsPerSet = 12)
+                    )
+                )
+            )
+            repository.saveFullPlan(plan)
+            val day = repository.allDaysWithExercises.first().first()
+            val sessionId = repository.startNewSession(day.day.id)
+
+            val analysisVm = AnalysisViewModel(repository)
+            analysisVm.loadSessionExercises(sessionId)
+            advanceUntilIdle()
+
+            val ex1 = day.exercises[0].id
+            val ex2 = day.exercises[1].id
+
+            // Initially none expanded
+            assertTrue(analysisVm.sessionExercisesState.value.exercises.none { it.isExpanded })
+
+            // Tap exercise 1 -> only exercise 1 expanded
+            analysisVm.toggleExerciseExpanded(ex1)
+            val afterEx1 = analysisVm.sessionExercisesState.value
+            assertEquals(ex1, afterEx1.expandedExerciseId)
+            assertEquals(listOf(true, false, false), afterEx1.exercises.map { it.isExpanded })
+
+            // Tap exercise 2 -> exercise 1 closes and only exercise 2 expands
+            analysisVm.toggleExerciseExpanded(ex2)
+            val afterEx2 = analysisVm.sessionExercisesState.value
+            assertEquals(ex2, afterEx2.expandedExerciseId)
+            assertEquals(listOf(false, true, false), afterEx2.exercises.map { it.isExpanded })
+
+            // Tap exercise 2 again -> all closed
+            analysisVm.toggleExerciseExpanded(ex2)
+            val afterCollapse = analysisVm.sessionExercisesState.value
+            assertNull(afterCollapse.expandedExerciseId)
+            assertTrue(afterCollapse.exercises.none { it.isExpanded })
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    private class FakeVersionPreferences(initialVersion: String? = null) : VersionPreferences {
+        var storedVersion: String? = initialVersion
+        override suspend fun getLastSeenVersion(): String? = storedVersion
+        override suspend fun setLastSeenVersion(versionName: String) {
+            storedVersion = versionName
+        }
+    }
+
+    @Test
+    fun versionComparator_handlesSemanticAndNumericVersions() {
+        assertTrue(VersionComparator.isVersionNewer("2.5", "2.1"))
+        assertTrue(VersionComparator.isVersionNewer("2.5", "2.0"))
+        assertTrue(VersionComparator.isVersionNewer("2.10", "2.5"))
+        assertTrue(VersionComparator.isVersionNewer("3.0", "2.5"))
+        assertFalse(VersionComparator.isVersionNewer("2.5", "2.5"))
+        assertFalse(VersionComparator.isVersionNewer("2.1", "2.5"))
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun whatsNewDialog_freshInstallDoesNotShowAndStoresCurrentVersion() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        try {
+            val prefs = FakeVersionPreferences(initialVersion = null)
+            val vm = WorkoutViewModel(repository, prefs)
+
+            vm.checkLaunchStatusIfNeeded("2.5")
+            advanceUntilIdle()
+
+            assertFalse(vm.showWhatsNewDialog.value)
+            assertEquals("2.5", prefs.storedVersion)
+
+            // Even after user creates a plan later and restarts app, still won't show for 2.5
+            repository.saveFullPlan(
+                listOf(
+                    DayWithExercisesData(
+                        name = "روز اول",
+                        exercises = listOf(ExerciseData(name = "اسکات", plannedSets = 3, plannedRepsPerSet = 10))
+                    )
+                )
+            )
+            val vm2 = WorkoutViewModel(repository, prefs)
+            vm2.checkLaunchStatusIfNeeded("2.5")
+            advanceUntilIdle()
+            assertFalse(vm2.showWhatsNewDialog.value)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun whatsNewDialog_showsOnceOnUpdateFromPrePreferencesOrOlderVersion() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        try {
+            // Existing data from an older install that had no stored version yet
+            repository.saveFullPlan(
+                listOf(
+                    DayWithExercisesData(
+                        name = "روز اول",
+                        exercises = listOf(ExerciseData(name = "پرس سینه", plannedSets = 3, plannedRepsPerSet = 10))
+                    )
+                )
+            )
+            val prefs = FakeVersionPreferences(initialVersion = null)
+            val vm = WorkoutViewModel(repository, prefs)
+
+            vm.checkLaunchStatusIfNeeded("2.5")
+            advanceUntilIdle()
+            assertTrue(vm.showWhatsNewDialog.value)
+            assertNull(prefs.storedVersion)
+
+            // User taps "متوجه شدم" -> closes dialog and stores "2.5"
+            vm.dismissWhatsNewDialog("2.5")
+            advanceUntilIdle()
+            assertFalse(vm.showWhatsNewDialog.value)
+            assertEquals("2.5", prefs.storedVersion)
+
+            // Restarting app on 2.5 does NOT show dialog again
+            val vmRestart = WorkoutViewModel(repository, prefs)
+            vmRestart.checkLaunchStatusIfNeeded("2.5")
+            advanceUntilIdle()
+            assertFalse(vmRestart.showWhatsNewDialog.value)
+
+            // Updating later from 2.5 to 2.6 shows dialog again
+            val vmFutureUpdate = WorkoutViewModel(repository, prefs)
+            vmFutureUpdate.checkLaunchStatusIfNeeded("2.6")
+            advanceUntilIdle()
+            assertTrue(vmFutureUpdate.showWhatsNewDialog.value)
+        } finally {
+            Dispatchers.resetMain()
+        }
     }
 }

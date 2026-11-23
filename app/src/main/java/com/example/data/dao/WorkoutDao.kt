@@ -161,6 +161,34 @@ interface WorkoutDao {
     @Query("SELECT * FROM set_logs WHERE sessionId = :sessionId ORDER BY setNumber ASC")
     suspend fun getSetLogsForSessionDirect(sessionId: Long): List<SetLog>
 
+    @Query("""
+        SELECT s.* FROM sessions s
+        INNER JOIN set_logs sl ON sl.sessionId = s.id
+        LEFT JOIN exercises ex ON sl.exerciseId = ex.id
+        WHERE s.id != :currentSessionId
+          AND (s.startedAt < :currentStartedAt OR (s.startedAt = :currentStartedAt AND s.id < :currentSessionId))
+          AND TRIM(CASE WHEN sl.exerciseName != '' THEN sl.exerciseName ELSE COALESCE(ex.name, '') END) = TRIM(:exerciseName)
+        ORDER BY s.startedAt DESC, s.id DESC
+        LIMIT 1
+    """)
+    suspend fun getPreviousSessionForExerciseDirect(
+        currentSessionId: Long,
+        currentStartedAt: Long,
+        exerciseName: String
+    ): Session?
+
+    @Query("""
+        SELECT sl.* FROM set_logs sl
+        LEFT JOIN exercises ex ON sl.exerciseId = ex.id
+        WHERE sl.sessionId = :sessionId
+          AND TRIM(CASE WHEN sl.exerciseName != '' THEN sl.exerciseName ELSE COALESCE(ex.name, '') END) = TRIM(:exerciseName)
+        ORDER BY sl.setNumber ASC
+    """)
+    suspend fun getSetLogsForSessionAndExerciseNameDirect(
+        sessionId: Long,
+        exerciseName: String
+    ): List<SetLog>
+
     // === Exercise Comments ===
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrUpdateExerciseComment(comment: ExerciseComment): Long

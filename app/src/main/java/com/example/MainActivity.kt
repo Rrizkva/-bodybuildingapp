@@ -15,6 +15,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.data.database.AppDatabase
+import com.example.data.preferences.DataStoreVersionPreferences
 import com.example.data.repository.WorkoutRepository
 import com.example.ui.navigation.Screen
 import com.example.ui.screens.ExerciseAnalysisScreen
@@ -42,7 +43,8 @@ class MainActivity : ComponentActivity() {
 
         val database = AppDatabase.getDatabase(applicationContext)
         val repository = WorkoutRepository(database.workoutDao())
-        val viewModelFactory = WorkoutViewModelFactory(repository)
+        val versionPreferences = DataStoreVersionPreferences(applicationContext)
+        val viewModelFactory = WorkoutViewModelFactory(repository, versionPreferences)
 
         setContent {
             WorkoutTheme {
@@ -60,6 +62,7 @@ class MainActivity : ComponentActivity() {
                         composable(Screen.Splash.route) {
                             SplashScreen(
                                 repository = repository,
+                                workoutViewModel = workoutViewModel,
                                 onNavigateToNext = { targetRoute ->
                                     navController.navigate(targetRoute) {
                                         popUpTo(Screen.Splash.route) { inclusive = true }

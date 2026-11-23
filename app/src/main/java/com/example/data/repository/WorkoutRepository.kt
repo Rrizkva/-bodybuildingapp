@@ -11,6 +11,8 @@ import com.example.data.model.Session
 import com.example.data.model.SessionWithDay
 import com.example.data.model.SetLog
 import com.example.data.model.WorkoutDay
+import com.example.util.JalaliDate
+import com.example.util.JalaliDateUtil
 import kotlinx.coroutines.flow.Flow
 
 class WorkoutRepository(private val workoutDao: WorkoutDao) {
@@ -62,6 +64,53 @@ class WorkoutRepository(private val workoutDao: WorkoutDao) {
 
     fun getLoggedSetsForExerciseName(exerciseName: String): Flow<List<LoggedSetWithSession>> =
         workoutDao.getLoggedSetsForExerciseName(exerciseName)
+
+    suspend fun getPreviousExerciseReference(
+        currentSessionId: Long,
+        currentStartedAt: Long,
+        exerciseName: String,
+        plannedSets: Int
+    ): PreviousExerciseReference? {
+        val trimmedName = exerciseName.trim()
+        if (trimmedName.isEmpty()) return null
+
+        val previousSession = workoutDao.getPreviousSessionForExerciseDirect(
+            currentSessionId = currentSessionId,
+            currentStartedAt = currentStartedAt,
+            exerciseName = trimmedName
+        ) ?: return null
+
+        val logs = workoutDao.getSetLogsForSessionAndExerciseNameDirect(
+            sessionId = previousSession.id,
+            exerciseName = trimmedName
+        )
+        val logsBySetNumber = logs.associateBy { it.setNumber }
+        val maxSetNumber = maxOf(plannedSets, logs.maxOfOrNull { it.setNumber } ?: 0)
+        val setItems = (1..maxSetNumber).map { setNumber ->
+            val log = logsBySetNumber[setNumber]
+            if (log != null && log.completed) {
+                PreviousSetReferenceItem(
+                    setNumber = setNumber,
+                    weight = log.weight,
+                    reps = log.reps,
+                    isCompleted = true
+                )
+            } else {
+                PreviousSetReferenceItem(
+                    setNumber = setNumber,
+                    weight = null,
+                    reps = null,
+                    isCompleted = false
+                )
+            }
+        }
+
+        return PreviousExerciseReference(
+            sessionId = previousSession.id,
+            jalaliDate = JalaliDateUtil.fromEpochMillis(previousSession.startedAt),
+            sets = setItems
+        )
+    }
 
     suspend fun saveFullPlan(planData: List<DayWithExercisesData>) {
         val daysData = planData.mapIndexed { dayIndex, dayItem ->
@@ -120,6 +169,10 @@ class WorkoutRepository(private val workoutDao: WorkoutDao) {
 
     suspend fun dismissSessionResume(sessionId: Long) {
         workoutDao.dismissSessionResume(sessionId)
+    }
+
+    suspend fun hasAnyExistingData(): Boolean {
+        return workoutDao.getDaysDirect().isNotEmpty() || workoutDao.getAllSessionsDirect().isNotEmpty()
     }
 
     suspend fun saveSetLog(setLog: SetLog): Long {
@@ -233,4 +286,17 @@ data class ExerciseData(
     val name: String,
     val plannedSets: Int = 3,
     val plannedRepsPerSet: Int = 10
+)
+
+data class PreviousSetReferenceItem(
+    val setNumber: Int,
+    val weight: Double?,
+    val reps: Int?,
+    val isCompleted: Boolean
+)
+
+data class PreviousExerciseReference(
+    val sessionId: Long,
+    val jalaliDate: JalaliDate,
+    val sets: List<PreviousSetReferenceItem>
 )

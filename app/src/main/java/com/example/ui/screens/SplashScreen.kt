@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import com.example.BuildConfig
 import com.example.R
 import com.example.data.repository.WorkoutRepository
+import com.example.ui.viewmodel.WorkoutViewModel
 import com.example.util.JalaliDateUtil
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.firstOrNull
@@ -41,12 +42,16 @@ import kotlinx.coroutines.flow.firstOrNull
 @Composable
 fun SplashScreen(
     repository: WorkoutRepository,
+    workoutViewModel: WorkoutViewModel,
     onNavigateToNext: (String) -> Unit
 ) {
     val alphaAnim = remember { Animatable(0f) }
     val scaleAnim = remember { Animatable(0.85f) }
 
     LaunchedEffect(Unit) {
+        // Check installed version vs stored last-seen version before any new plan is created
+        workoutViewModel.checkLaunchStatusIfNeeded()
+
         // Subtle animate-in for logo and text
         alphaAnim.animateTo(1f, animationSpec = tween(700))
         scaleAnim.animateTo(1f, animationSpec = tween(700))
